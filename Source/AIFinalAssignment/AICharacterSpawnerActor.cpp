@@ -10,7 +10,20 @@ AAICharacterSpawnerActor::AAICharacterSpawnerActor()
 	PrimaryActorTick.bCanEverTick = true;
 	MaxSpawnTime = 10.0f;
 	CurrentSpawnTime = MaxSpawnTime;
-	CurrentTeam = ETeam::Blue;
+
+	Capsule = CreateDefaultSubobject<UCapsuleComponent>(TEXT("CAPSULE"));
+	Mesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("MESH"));
+	RootComponent = Capsule;
+	Mesh->SetupAttachment(Capsule);
+
+	static ConstructorHelpers::FObjectFinder<UStaticMesh> MESH(TEXT("StaticMesh'/Engine/BasicShapes/Cylinder.Cylinder'"));
+	if (MESH.Succeeded())
+	{
+		Mesh->SetStaticMesh(MESH.Object);
+	}
+
+	Capsule->SetCollisionProfileName(TEXT("Spectator"));
+	Mesh->SetCollisionProfileName(TEXT("NoCollision"));
 }
 
 // Called when the game starts or when spawned
@@ -35,9 +48,21 @@ void AAICharacterSpawnerActor::Tick(float DeltaTime)
 void AAICharacterSpawnerActor::SpawnCharacter()
 {
 	FActorSpawnParameters test;
-	FVector l = GetActorLocation();
-	FRotator r = GetActorRotation();
-	auto a = (AAICharacter*)GetWorld()->SpawnActor(AAICharacter::StaticClass(), &l, &r, test);
-	a->SetTeam(CurrentTeam);
+	AAICharacter* temp = nullptr;
+	int32 Count = 0;
+	do
+	{
+		if (Count++ >= 3)
+			break;
+		FVector l = GetActorLocation();
+		FRotator r = GetActorRotation();
+		l.X += FMath::Rand() % 1000 - 500;
+		l.Y += FMath::Rand() % 1000 - 500;
+		temp = (AAICharacter*)GetWorld()->SpawnActor(AAICharacter::StaticClass(), &l, &r, test);
+	} while (temp == nullptr);
+	if(temp != nullptr)
+		temp->SetTeamChange(CurrentTeam);
+	else
+		ABLOG_S(Warning)	
 }
 

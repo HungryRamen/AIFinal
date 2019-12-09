@@ -21,7 +21,7 @@ public:
 		AI,
 	};
 
-	void SetTeam(ETeam NewTeam);
+	void SetTeamChange(ETeam NewTeam);
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
@@ -30,8 +30,7 @@ protected:
 	void SetControlMode(EControlMode NewControlMode);
 	EControlMode CurrentControlMode = EControlMode::Player;
 	FVector DirectionToMove = FVector::ZeroVector;
-	
-	ETeam CurrentTeam = ETeam::Red;
+	void SetTeam(ETeam NewTeam);
 
 public:	
 	// Called every frame
@@ -52,7 +51,17 @@ public:
 
 	UPROPERTY(VisibleAnywhere, Category = Camera)
 		UCameraComponent* Camera;
+	UPROPERTY(EditAnywhere, Category = Spawn, Meta = (Bitmask, BitmaskEnum = "ETeam"))
+		ETeam CurrentTeam = ETeam::Blue;
 
+	UPROPERTY(EditAnywhere, Category = Spawn)
+		USkeletalMesh* SK_BLUEWARRIOR;
+	UPROPERTY(EditAnywhere, Category = Spawn)
+		USkeletalMesh* SK_REDWARRIOR;
+	UPROPERTY(EditAnywhere, Category = Spawn)
+		USkeletalMesh* SK_BLUEWEAPON;
+	UPROPERTY(EditAnywhere, Category = Spawn)
+		USkeletalMesh* SK_REDWEAPON;
 private:
 
 	void UpDown(float NewAxisValue);
@@ -95,6 +104,9 @@ private:
 
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = Attack, Meta = (AllowPrivateAccess = true))
 		float HitPoint;
+
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = Attack, Meta = (AllowPrivateAccess = true))
+		float CurrentDestroyTime;
 
 	UPROPERTY()
 		class UAIAnimInstance* AIAnim;

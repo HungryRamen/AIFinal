@@ -24,11 +24,16 @@ public:
 	virtual void Tick(float DeltaTime) override;
 
 	void SpawnCharacter();
+
+	UPROPERTY(VisibleAnywhere, Category = Collision)
+		UCapsuleComponent* Capsule;
+	UPROPERTY(VisibleAnywhere, Category = Visual)
+		UStaticMeshComponent* Mesh;
 public:
 	UPROPERTY(EditAnywhere, Category = Spawn)
 		float MaxSpawnTime;
 	UPROPERTY(VisibleAnywhere, Category = Spawn)
 		float CurrentSpawnTime;
 	UPROPERTY(EditAnywhere, Category = Spawn, Meta = (Bitmask,BitmaskEnum = "ETeam"))
-		ETeam CurrentTeam;
+		ETeam CurrentTeam = ETeam::Blue;
 };

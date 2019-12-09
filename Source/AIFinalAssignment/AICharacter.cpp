@@ -16,9 +16,13 @@ AAICharacter::AAICharacter()
 	SpringArm->SetupAttachment(GetCapsuleComponent());
 	Camera->SetupAttachment(SpringArm);
 
-	GetMesh()->SetRelativeLocationAndRotation(FVector(0.0f, 0.0f, -88.0f),FRotator(0.0f, -90.0f, 0.0f));
+	GetMesh()->SetRelativeLocationAndRotation(FVector(0.0f, 0.0f, -88.0f), FRotator(0.0f, -90.0f, 0.0f));
 
-	//SetTeam(ETeam::Blue);
+	SK_REDWARRIOR = ConstructorHelpers::FObjectFinder<USkeletalMesh>(TEXT("SkeletalMesh'/Game/InfinityBladeWarriors/Character/CompleteCharacters/SK_CharM_solid.SK_CharM_solid'")).Object;
+	SK_BLUEWARRIOR = ConstructorHelpers::FObjectFinder<USkeletalMesh>(TEXT("SkeletalMesh'/Game/InfinityBladeWarriors/Character/CompleteCharacters/SK_CharM_FrostGiant.SK_CharM_FrostGiant'")).Object;
+	SK_REDWEAPON = ConstructorHelpers::FObjectFinder<USkeletalMesh>(TEXT("SkeletalMesh'/Game/InfinityBladeWeapons/Weapons/Blade/Axes/Blade_AnthraciteAxe/SK_Blade_AnthraciteAxe.SK_Blade_AnthraciteAxe'")).Object;
+	SK_BLUEWEAPON = ConstructorHelpers::FObjectFinder<USkeletalMesh>(TEXT("SkeletalMesh'/Game/InfinityBladeWeapons/Weapons/Blade/Axes/Blade_IceElemental/SK_Blade_IceElemental.SK_Blade_IceElemental'")).Object;
+	SetTeam(CurrentTeam);
 
 	GetMesh()->SetAnimationMode(EAnimationMode::AnimationBlueprint);
 
@@ -38,6 +42,7 @@ AAICharacter::AAICharacter()
 	AttackRadius = 50.0f;
 	AttackDamage = 10.0f;
 	HitPoint = 30.0f;
+	CurrentDestroyTime = 0.0f;
 	AttackEndComboState();
 }
 
@@ -45,7 +50,6 @@ AAICharacter::AAICharacter()
 void AAICharacter::BeginPlay()
 {
 	Super::BeginPlay();
-	
 }
 
 void AAICharacter::SetControlMode(EControlMode NewControlMode)
@@ -74,41 +78,65 @@ void AAICharacter::SetControlMode(EControlMode NewControlMode)
 	}
 }
 
-void AAICharacter::SetTeam(ETeam NewTeam)
+void AAICharacter::SetTeamChange(ETeam NewTeam)
 {
 	CurrentTeam = NewTeam;
-	auto WarriorLocation = TEXT("");
-	auto WeaponLocation = TEXT("");
 	switch (CurrentTeam)
 	{
 	case ETeam::Red:
-		WarriorLocation = TEXT("SkeletalMesh'/Game/InfinityBladeWarriors/Character/CompleteCharacters/SK_CharM_solid.SK_CharM_solid'");
-		WeaponLocation = TEXT("SkeletalMesh'/Game/InfinityBladeWeapons/Weapons/Blade/Axes/Blade_AnthraciteAxe/SK_Blade_AnthraciteAxe.SK_Blade_AnthraciteAxe'");
+		GetMesh()->SetSkeletalMesh(SK_REDWARRIOR);
+		Weapon->SetSkeletalMesh(SK_REDWEAPON);
 		break;
 	case ETeam::Blue:
-		WarriorLocation = TEXT("SkeletalMesh'/Game/InfinityBladeWarriors/Character/CompleteCharacters/SK_CharM_FrostGiant.SK_CharM_FrostGiant'");
-		WeaponLocation = TEXT("SkeletalMesh'/Game/InfinityBladeWeapons/Weapons/Blade/Axes/Blade_IceElemental/SK_Blade_IceElemental.SK_Blade_IceElemental'");
+		GetMesh()->SetSkeletalMesh(SK_BLUEWARRIOR);
+		Weapon->SetSkeletalMesh(SK_BLUEWEAPON);
+		break;
+	default:
+		break;
+	}
+}
+
+void AAICharacter::SetTeam(ETeam NewTeam)
+{
+	CurrentTeam = NewTeam;
+	FName WeaponSocket(TEXT("hand_rSocket"));
+	switch (CurrentTeam)
+	{
+	case ETeam::Red:
+		if (SK_REDWARRIOR != nullptr)
+		{
+			GetMesh()->SetSkeletalMesh(SK_REDWARRIOR);
+		}
+
+		if (GetMesh()->DoesSocketExist(WeaponSocket))
+		{
+			Weapon = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("WEAPON"));
+			if (SK_REDWEAPON != nullptr)
+			{
+				Weapon->SetSkeletalMesh(SK_REDWEAPON);
+			}
+			Weapon->SetupAttachment(GetMesh(), WeaponSocket);
+		}
+		break;
+	case ETeam::Blue:
+		if (SK_BLUEWARRIOR!= nullptr)
+		{
+			GetMesh()->SetSkeletalMesh(SK_BLUEWARRIOR);
+		}
+
+		if (GetMesh()->DoesSocketExist(WeaponSocket))
+		{
+			Weapon = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("WEAPON"));
+			if (SK_BLUEWEAPON != nullptr)
+			{
+				Weapon->SetSkeletalMesh(SK_BLUEWEAPON);
+			}
+			Weapon->SetupAttachment(GetMesh(), WeaponSocket);
+		}
 		break;
 	default:
 		return;
 		break;
-	}
-	static ConstructorHelpers::FObjectFinder<USkeletalMesh> SK_WARRIOR(WarriorLocation);
-	if (SK_WARRIOR.Succeeded())
-	{
-		GetMesh()->SetSkeletalMesh(SK_WARRIOR.Object);
-	}
-
-	FName WeaponSocket(TEXT("hand_rSocket"));
-	if (GetMesh()->DoesSocketExist(WeaponSocket))
-	{
-		Weapon = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("WEAPON"));
-		static ConstructorHelpers::FObjectFinder<USkeletalMesh> SK_WEAPON(WeaponLocation);
-		if (SK_WEAPON.Succeeded())
-		{
-			Weapon->SetSkeletalMesh(SK_WEAPON.Object);
-		}
-		Weapon->SetupAttachment(GetMesh(), WeaponSocket);
 	}
 }
 
@@ -129,6 +157,15 @@ void AAICharacter::Tick(float DeltaTime)
 		break;
 	default:
 		break;
+	}
+	if (HitPoint <= 0.0f)
+	{
+		CurrentDestroyTime += DeltaTime;
+		if (CurrentDestroyTime >= 3.0f)
+		{
+			Destroy();
+			return;
+		}
 	}
 }
 
@@ -264,6 +301,8 @@ void AAICharacter::AttackCheck()
 	if (bResult)
 	{
 		auto AiCharacter = Cast<AAICharacter>(HitResult.Actor);
+		if (AiCharacter == nullptr)
+			return;
 		if (AiCharacter->CurrentTeam != CurrentTeam)
 		{
 
