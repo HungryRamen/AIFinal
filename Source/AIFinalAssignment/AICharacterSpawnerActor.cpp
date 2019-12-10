@@ -56,12 +56,25 @@ void AAICharacterSpawnerActor::SpawnCharacter()
 			break;
 		FVector l = GetActorLocation();
 		FRotator r = GetActorRotation();
-		l.X += FMath::Rand() % 1000 - 500;
-		l.Y += FMath::Rand() % 1000 - 500;
+		l.X += FMath::Rand() % 800 - 400;
+		l.Y += FMath::Rand() % 800 - 400;
 		temp = (AAICharacter*)GetWorld()->SpawnActor(AAICharacter::StaticClass(), &l, &r, test);
 	} while (temp == nullptr);
-	if(temp != nullptr)
+	if (temp != nullptr)
+	{
 		temp->SetTeamChange(CurrentTeam);
+		switch (CurrentTeam)
+		{
+		case ETeam::Red:
+			temp->EndPos = FVector(0.0f, 2000.0f, 0.0f);
+			break;
+		case ETeam::Blue:
+			temp->EndPos = FVector(0.0f, -2000.0f, 0.0f);
+			break;
+		default:
+			break;
+		}
+	}
 	else
 		ABLOG_S(Warning)	
 }

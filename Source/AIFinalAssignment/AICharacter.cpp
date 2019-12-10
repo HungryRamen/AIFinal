@@ -4,7 +4,7 @@
 #include "AICharacter.h"
 #include "AIAnimInstance.h"
 #include "DrawDebugHelpers.h"
-
+#include "AIAIController.h"
 // Sets default values
 AAICharacter::AAICharacter()
 {
@@ -32,8 +32,6 @@ AAICharacter::AAICharacter()
 		GetMesh()->SetAnimInstanceClass(WARRIOR_ANIM.Class);
 	}
 
-	GetCapsuleComponent()->SetCollisionProfileName(TEXT("AICharacter"));
-
 	SetControlMode(EControlMode::Player);
 
 	IsAttacking = false;
@@ -44,6 +42,8 @@ AAICharacter::AAICharacter()
 	HitPoint = 30.0f;
 	CurrentDestroyTime = 0.0f;
 	AttackEndComboState();
+	AIControllerClass = AAIAIController::StaticClass();
+	AutoPossessAI = EAutoPossessAI::PlacedInWorldOrSpawned;
 }
 
 // Called when the game starts or when spawned
@@ -72,6 +72,10 @@ void AAICharacter::SetControlMode(EControlMode NewControlMode)
 		GetCharacterMovement()->RotationRate = FRotator(0.0f, 720.0f, 0.0f);
 		break;
 	case AAICharacter::EControlMode::AI:
+		bUseControllerRotationYaw = false;
+		GetCharacterMovement()->bUseControllerDesiredRotation = false;
+		GetCharacterMovement()->bOrientRotationToMovement = true;
+		GetCharacterMovement()->RotationRate = FRotator(0.0f, 480.0f, 0.0f);
 		break;
 	default:
 		break;
@@ -86,10 +90,12 @@ void AAICharacter::SetTeamChange(ETeam NewTeam)
 	case ETeam::Red:
 		GetMesh()->SetSkeletalMesh(SK_REDWARRIOR);
 		Weapon->SetSkeletalMesh(SK_REDWEAPON);
+		GetCapsuleComponent()->SetCollisionProfileName(TEXT("RedCharacter"));
 		break;
 	case ETeam::Blue:
 		GetMesh()->SetSkeletalMesh(SK_BLUEWARRIOR);
 		Weapon->SetSkeletalMesh(SK_BLUEWEAPON);
+		GetCapsuleComponent()->SetCollisionProfileName(TEXT("BlueCharacter"));
 		break;
 	default:
 		break;
@@ -193,9 +199,23 @@ float AAICharacter::TakeDamage(float Damage, FDamageEvent const& DamageEvent, AC
 	if (HitPoint <= 0.0f)
 	{
 		AIAnim->SetDeadAnim();
-		SetActorEnableCollision(false);
+		GetCapsuleComponent()->SetCollisionProfileName(TEXT("NoCollision"));
 	}
 	return FinalDamage;
+}
+
+void AAICharacter::PossessedBy(AController* NewController)
+{
+	Super::PossessedBy(NewController);
+	if (IsPlayerControlled())
+	{
+		SetControlMode(AAICharacter::EControlMode::Player);
+	}
+	else
+	{
+		SetControlMode(AAICharacter::EControlMode::AI);
+
+	}
 }
 
 // Called to bind functionality to input
@@ -267,6 +287,7 @@ void AAICharacter::OnAttackMontageEnded(UAnimMontage* Montage, bool bInterrupted
 {
 	IsAttacking = false;
 	AttackEndComboState();
+	OnAttackEnd.Broadcast();
 }
 
 void AAICharacter::AttackStartComboState()
@@ -287,13 +308,25 @@ void AAICharacter::AttackEndComboState()
 void AAICharacter::AttackCheck()
 {
 	FHitResult HitResult;
+	ECollisionChannel CollsionChannel = ECollisionChannel::ECC_EngineTraceChannel1;
+	switch (CurrentTeam)
+	{
+	case ETeam::Red:
+		CollsionChannel = ECollisionChannel::ECC_GameTraceChannel3;
+		break;
+	case ETeam::Blue:
+		CollsionChannel = ECollisionChannel::ECC_GameTraceChannel2;
+		break;
+	default:
+		break;
+	}
 	FCollisionQueryParams Params(NAME_None, false, this);
 	bool bResult = GetWorld()->SweepSingleByChannel(
 		HitResult,
 		GetActorLocation(),
 		GetActorLocation() + GetActorForwardVector() * AttackRange,
 		FQuat::Identity,
-		ECollisionChannel::ECC_GameTraceChannel2,
+		CollsionChannel,
 		FCollisionShape::MakeSphere(AttackRadius),
 		Params
 	);

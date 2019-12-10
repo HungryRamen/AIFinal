@@ -8,7 +8,7 @@
 
 AAIFinalAssignmentGameModeBase::AAIFinalAssignmentGameModeBase()
 {
-	DefaultPawnClass = AAICharacter::StaticClass();
+	DefaultPawnClass = AAISpectorPawn::StaticClass();
 	PlayerControllerClass = AAIPlayerController::StaticClass();
 }
 

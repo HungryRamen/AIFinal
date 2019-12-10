@@ -6,6 +6,8 @@
 #include "GameFramework/Character.h"
 #include "AICharacter.generated.h"
 
+DECLARE_MULTICAST_DELEGATE(FOnAttackEndDelegate);
+
 UCLASS()
 class AIFINALASSIGNMENT_API AAICharacter : public ACharacter
 {
@@ -40,6 +42,8 @@ public:
 
 	virtual float TakeDamage(float Damage, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser)override;
 	
+	virtual void PossessedBy(AController* NewController) override;
+
 	// Called to bind functionality to input
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
@@ -51,6 +55,10 @@ public:
 
 	UPROPERTY(VisibleAnywhere, Category = Camera)
 		UCameraComponent* Camera;
+
+	void Attack();
+	FOnAttackEndDelegate OnAttackEnd;
+
 	UPROPERTY(EditAnywhere, Category = Spawn, Meta = (Bitmask, BitmaskEnum = "ETeam"))
 		ETeam CurrentTeam = ETeam::Blue;
 
@@ -62,14 +70,18 @@ public:
 		USkeletalMesh* SK_BLUEWEAPON;
 	UPROPERTY(EditAnywhere, Category = Spawn)
 		USkeletalMesh* SK_REDWEAPON;
+
+	UPROPERTY(VisibleAnywhere, Category = AI)
+		FVector EndPos;
+
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = Attack, Meta = (AllowPrivateAccess = true))
+		float HitPoint;
 private:
 
 	void UpDown(float NewAxisValue);
 	void LeftRight(float NewAxisValue);
 	void LookUp(float NewAxisValue);
 	void Turn(float NewAxisValue);
-
-	void Attack();
 
 	UFUNCTION()
 		void OnAttackMontageEnded(UAnimMontage* Montage, bool bInterrupted);
@@ -101,9 +113,6 @@ private:
 
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = Attack, Meta = (AllowPrivateAccess = true))
 		float AttackDamage;
-
-	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = Attack, Meta = (AllowPrivateAccess = true))
-		float HitPoint;
 
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = Attack, Meta = (AllowPrivateAccess = true))
 		float CurrentDestroyTime;
