@@ -10,7 +10,7 @@
 UBTService_Detect::UBTService_Detect()
 {
 	NodeName = TEXT("Detect");
-	Interval = 1.0f;
+	Interval = 0.5f;
 
 }
 
